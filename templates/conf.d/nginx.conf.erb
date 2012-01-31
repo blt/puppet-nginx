@@ -1,4 +1,8 @@
-user <%= scope.lookupvar('nginx::config::nx_daemon_user') %>;
+# The primary nginx configuration file. If you have any questions, refer to
+# http://wiki.nginx.org/Main or ask in #nginx on freenode.net. Nice folks in
+# there.
+
+user <%= scope.lookupvar('nginx::params::nx_daemon_user') %>;
 worker_processes <%= scope.lookupvar('nginx::params::nx_worker_processes')%>;
 
 error_log  <%= scope.lookupvar('nginx::params::nx_logdir')%>/error.log;
@@ -14,20 +18,39 @@ http {
   default_type  application/octet-stream;
 
   access_log  <%= scope.lookupvar('nginx::params::nx_logdir')%>/access.log;
-
   sendfile    <%= scope.lookupvar('nginx::params::nx_sendfile')%>;
 
-  <% if scope.lookupvar('nginx::params::nx_tcp_nopush' == 'on') %>
-  tcp_nopush  on;
-  <% end %>
-
+  tcp_nopush         <%= scope.lookupvar('nginx::params::nx_tcp_nopush') %>;
   keepalive_timeout  <%= scope.lookupvar('nginx::params::nx_keepalive_timeout')%>;
   tcp_nodelay        <%= scope.lookupvar('nginx::params::nx_tcp_nodelay')%>;
 
-  <% if scope.lookupvar('nginx::params::nx_gzip' == 'on') %> 
-  gzip         on;
-  gzip_disable "MSIE [1-6]\.(?!.*SV1)";
+  types_hash_max_size 2048;
+
+  <% if scope.lookupvar('nginx::params::nx_gzip' == 'on') %>
+  gzip on;
+  gzip_disable "msie6";
+
+  gzip_vary on;
+  gzip_proxied any;
+  gzip_comp_level 6;
+  gzip_buffers 16 8k;
+  gzip_http_version 1.1;
+  gzip_types text/plain text/css application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript;
   <% end %>
 
+  <% if scope.lookupvar('nginx::params::nx_always_https' == 'on') %>
+  server {
+    listen 80;
+    rewrite ^(.*) https://$host$1 permanent;
+  }
+  <% end %>
+
+  # http://wiki.nginx.org/HttpMapModule
+  map $scheme $server_https {
+    default off;
+    https on;
+  }
+
   include /etc/nginx/conf.d/*.conf;
+  include /etc/nginx/sites-enabled/*;
 }

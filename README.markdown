@@ -1,42 +1,54 @@
 # NGINX Module
 
-James Fryman <jamison@puppetlabs.com>
+Originally by James Fryman <jamison@puppetlabs.com>.
 
-This module manages NGINX from within Puppet.
+This module manages NGINX from within Puppet. It manages installation of OS
+package, the running service and the placement of configuration files through
+exposed resources. These resources do _not_ construct configuration files for
+you--except those which are delightfully simple--requiring a provided template.
 
-# Quick Start
+This might sound like a bummer, but mimicking nginx's complex configuration
+language in puppet is a real horror show. Read on for a quick-start
+tutorial. The source code is well documented and should be readable by those new
+to puppet.
 
-Install and bootstrap an NGINX instance
+## Quick Start
 
-    node default {
-      class { 'nginx': }
-    }
+Install puppet-nginx into your modules (do this from the root of your primary
+puppet repository):
 
-Setup a new virtual host
+    $ git submodule add modules/nginx git://github.com/blt/puppet-nginx.git
 
-    node default {
-      class { 'mcollective': }
-      nginx::resource::vhost { 'www.puppetlabs.com':
-        ensure   => present,
-        www_root => '/var/www/www.puppetlabs.com',
+If you're on Debian you will need to install `puppet-apt` as well.
+
+    $ git submodule add modules/apt git://github.com/blt/puppet-apt.git
+
+Include nginx to install and bootstrap it on a box:
+
+<pre>
+    node /^app\d+\.example\.com/ {
+      include nginx
+
+      # Setup the default vhost, with supplied template.
+      nginx::resource::vhost { 'default':
+        ensure  => present,
+        content => template('app/vhost.erb'),
+      }
+      # Setup the upstream proxies referenced by the default vhost (pretend with
+      # me here).
+      nginx::resource::upstream { 'default':
+        ensure => present,
+        members =>
+        [
+          'unix:/var/run/puppet/master.00.sock',
+          'unix:/var/run/puppet/master.01.sock',
+          'unix:/var/run/puppet/master.02.sock',
+        ]
       }
     }
+</pre>
 
-Add a Proxy Server(s)
-
-   node default {
-     class { 'mcollective': }
-	 nginx::resource::upstream { 'puppet_rack_app':
-	   ensure  => present,
-	   members => [
-         'localhost:3000', 
-         'localhost:3001',
-         'localhost:3002',
-       ],
-     }
-
-     nginx::resource::vhost { 'rack.puppetlabs.com':
-       ensure   => present,
-       proxy  => 'http://puppet_rack_app',
-     }
-   } 
+The only resources provided by this module are those used above. Find them in
+`manifests/resources/`. Explore this module for more
+details. If you find a place that might be better documented, it _should_ and do
+take out an issue ticket.

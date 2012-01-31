@@ -1,28 +1,21 @@
-# Class: nginx::service
-#
-# This module manages NGINX service management and vhost rebuild
-#
-# Parameters:
-#
-# There are no default parameters for this class.
-#
-# Actions:
-#
-# Requires:
-#
-# Sample Usage:
-#
-# This class file is not called directly
 class nginx::service {
-  exec { 'rebuild-nginx-vhosts':
-    command     => "/bin/cat ${nginx::params::nx_temp_dir}/nginx.d/* > ${nginx::params::nx_conf_dir}/conf.d/vhost_autogen.conf",
-    refreshonly => true,
-    subscribe   => File["${nginx::params::nx_temp_dir}/nginx.d"],
-  }
+
+  # A standard puppet service
+  # (http://docs.puppetlabs.com/references/stable/type.html#service) save that
+  # I've overridden the restart command to perform a 'reload'. Puppet should
+  # _not_ be able to take a webserver offline, especially not if a vhost
+  # definition has been modified.
+  #
+  # There are some cases in which a full restart is required, but lacking the
+  # ability to tag a notify with metadata really puts a hamper on separating the
+  # restarts from the reload. Err, then, on the side of caution.
+
   service { "nginx":
-    ensure     => running,
-    enable	   => true,
-    hasstatus  => true,
-    hasrestart => true,
+    ensure    => running,
+    enable    => true,
+    hasstatus => true,
+    restart   => '/etc/init.d/nginx reload',
+    require   => Class['nginx::config'],
   }
+
 }

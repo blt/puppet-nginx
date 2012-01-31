@@ -1,40 +1,27 @@
-# Class: nginx::package
-#
-# This module manages NGINX package installation
-#
-# Parameters:
-#
-# There are no default parameters for this class.
-#
-# Actions:
-#
-# Requires:
-#
-# Sample Usage:
-#
-# This class file is not called directly
 class nginx::package {
-  anchor { 'nginx::package::begin': }
-  anchor { 'nginx::package::end': }
+
+  # There's probably a more DRY way to express this. If we're on Debian pin
+  # nginx to come from squeeze-backports and install there. Requires
+  # puppet-apt. See the project README for details.
 
   case $operatingsystem {
-    centos,fedora,rhel: {
-      class { 'nginx::package::redhat':
-        require => Anchor['nginx::package::begin'],
-        before  => Anchor['nginx::package::end'],
+    'debian': {
+      apt::preference { 'nginx':
+        package => 'nginx nginx-common',
+        priority => '600',
+        release => 'a=squeeze-backports',
+      }
+
+      package { 'nginx':
+        ensure => present,
+        require => Apt::Preference['nginx'],
       }
     }
-    debian,ubuntu: {
-      class { 'nginx::package::debian': 
-        require => Anchor['nginx::package::begin'],
-        before  => Anchor['nginx::package::end'],
-      }
-    }
-    opensuse,suse: {
-      class { 'nginx::package::suse':
-        require => Anchor['nginx::package::begin'],
-        before  => Anchor['nginx::package::end'],
+    default: {
+      package { 'nginx':
+        ensure => present,
       }
     }
   }
+
 }
